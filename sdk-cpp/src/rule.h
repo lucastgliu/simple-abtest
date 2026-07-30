@@ -45,6 +45,8 @@ struct ExprNode {
   double param_f = 0.0;
   std::vector<std::size_t> child;
   std::unordered_set<std::string> param_ss;
+
+  void Normalize(const proto::ExprNode& src);
 };
 
 class RuleExpr {
@@ -54,9 +56,8 @@ class RuleExpr {
   RuleExpr() = default;
   explicit RuleExpr(Nodes nodes);
 
-  static bool FromProto(const google::protobuf::RepeatedPtrField<proto::ExprNode>& src,
-                        RuleExpr* out,
-                        std::string* error);
+  void Normalize(const google::protobuf::RepeatedPtrField<proto::ExprNode>& src);
+  bool Validate(std::string* error) const;
 
   bool Eval(const std::unordered_map<std::string, std::string>& args) const;
   bool Empty() const;

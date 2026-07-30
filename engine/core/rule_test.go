@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -32,6 +33,33 @@ func TestEvalExprIn(t *testing.T) {
 	}
 	if EvalExpr(nodes, map[string]string{}) {
 		t.FailNow()
+	}
+}
+
+func TestExperimentNormalizeSetOperators(t *testing.T) {
+	var exps []Experiment
+	err := json.Unmarshal([]byte(`[
+		{"filter":[{"op":4,"dtype":1,"key":"bucket","ss":["A","B"]}]},
+		{"filter":[{"op":5,"dtype":1,"key":"bucket","ss":["A","B"]}]}
+	]`), &exps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range exps {
+		exps[i].Normalize()
+	}
+
+	if !EvalExpr(exps[0].Filter, map[string]string{"bucket": "A"}) {
+		t.Fatal("IN did not match a set member after normalization")
+	}
+	if EvalExpr(exps[0].Filter, map[string]string{"bucket": "C"}) {
+		t.Fatal("IN matched a value outside the set after normalization")
+	}
+	if EvalExpr(exps[1].Filter, map[string]string{"bucket": "A"}) {
+		t.Fatal("NOT IN matched a set member after normalization")
+	}
+	if !EvalExpr(exps[1].Filter, map[string]string{"bucket": "C"}) {
+		t.Fatal("NOT IN did not match a value outside the set after normalization")
 	}
 }
 

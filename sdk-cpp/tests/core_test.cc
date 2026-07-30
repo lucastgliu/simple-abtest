@@ -108,6 +108,21 @@ TEST(RuleTest, EvalLogic) {
   EXPECT_FALSE(EvalExpr(exps.front().filter, {{"country", "CN"}, {"age", "x"}}));
 }
 
+TEST(RuleTest, SetOperatorFiltersAreNormalizedFromSnapshot) {
+  std::vector<Experiment> exps;
+  std::string error;
+  const std::string payload = R"json([
+    {"filter": [{"op": 4, "dtype": 1, "key": "bucket", "ss": ["A", "B"]}]},
+    {"filter": [{"op": 5, "dtype": 1, "key": "bucket", "ss": ["A", "B"]}]}
+  ])json";
+  ASSERT_TRUE(ParseExperimentsJson(payload, &exps, &error)) << error;
+
+  EXPECT_TRUE(EvalExpr(exps[0].filter, {{"bucket", "A"}}));
+  EXPECT_FALSE(EvalExpr(exps[0].filter, {{"bucket", "C"}}));
+  EXPECT_FALSE(EvalExpr(exps[1].filter, {{"bucket", "A"}}));
+  EXPECT_TRUE(EvalExpr(exps[1].filter, {{"bucket", "C"}}));
+}
+
 TEST(DispatchTest, RichSegmentAndForceHit) {
   std::string key = FindKey(1, 50, 100);
   ASSERT_FALSE(key.empty());

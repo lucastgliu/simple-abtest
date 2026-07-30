@@ -79,6 +79,22 @@ class SdkJavaTest {
     }
 
     @Test
+    void setOperatorFiltersAreNormalizedFromSnapshot() {
+        String payload = """
+                [
+                  {"filter": [{"op": 4, "dtype": 1, "key": "bucket", "ss": ["A", "B"]}]},
+                  {"filter": [{"op": 5, "dtype": 1, "key": "bucket", "ss": ["A", "B"]}]}
+                ]
+                """;
+        List<Model.Experiment> exps = Client.parseExperiments(payload);
+
+        assertTrue(Model.evalExpr(exps.get(0).filter, Map.of("bucket", "A")));
+        assertFalse(Model.evalExpr(exps.get(0).filter, Map.of("bucket", "C")));
+        assertFalse(Model.evalExpr(exps.get(1).filter, Map.of("bucket", "A")));
+        assertTrue(Model.evalExpr(exps.get(1).filter, Map.of("bucket", "C")));
+    }
+
+    @Test
     void richSegmentDispatchWorks() {
         String key = findKey(1, 50, 100);
         String payload = """

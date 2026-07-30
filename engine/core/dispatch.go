@@ -47,6 +47,13 @@ type Experiment struct {
 	Layers []Layer    `json:"lyr,omitempty"`
 }
 
+// Normalize rebuilds runtime state derived from serialized experiment fields.
+func (exp *Experiment) Normalize() {
+	for i := range exp.Filter {
+		exp.Filter[i].normalize()
+	}
+}
+
 // locate returns the first group whose bitmap contains the hashed slot of key.
 func (s *Segment) locate(key string) *Group {
 	slot := Hash(uint64(s.Seed), utils.UnsafeStringToBytes(key)) % 1000

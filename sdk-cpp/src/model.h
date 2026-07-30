@@ -9,6 +9,9 @@
 #include "simple_abtest/sdk.h"
 
 namespace simple_abtest {
+namespace proto {
+class Experiment;
+}
 
 struct Group {
   std::string name;
@@ -44,6 +47,9 @@ struct Experiment {
   RuleExpr filter;
   std::uint32_t seed = 0;
   std::vector<Layer> layers;
+
+  void Normalize(const proto::Experiment& src);
+  bool Validate(std::string* error) const;
 };
 
 bool ParseExperimentsJson(const std::string& payload,

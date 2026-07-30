@@ -122,6 +122,16 @@ final class Model {
         transient OpType opType = OpType.NULL;
         transient DataType dataType = DataType.NULL;
         transient Set<String> paramSS = Set.of();
+
+        void normalize() {
+            opType = OpType.fromCode(op);
+            dataType = DataType.fromCode(dtype);
+            key = key == null ? "" : key;
+            paramS = paramS == null ? "" : paramS;
+            child = child == null ? List.of() : List.copyOf(child);
+            rawParamSS = rawParamSS == null ? List.of() : List.copyOf(rawParamSS);
+            paramSS = rawParamSS.isEmpty() ? Set.of() : Set.copyOf(new HashSet<>(rawParamSS));
+        }
     }
 
     static final class Experiment {
@@ -129,6 +139,14 @@ final class Model {
         long seed;
         @SerializedName("lyr")
         List<Layer> layers = List.of();
+
+        void normalize() {
+            filter = filter == null ? List.of() : List.copyOf(filter);
+            layers = layers == null ? List.of() : normalizeLayers(layers);
+            for (ExprNode node : filter) {
+                node.normalize();
+            }
+        }
     }
 
     static List<Experiment> parseExperiments(String payload) {
@@ -138,7 +156,10 @@ final class Model {
         }
         ArrayList<Experiment> normalized = new ArrayList<>(exps.length);
         for (Experiment exp : exps) {
-            normalized.add(normalizeExperiment(exp));
+            Experiment item = exp == null ? new Experiment() : exp;
+            item.normalize();
+            validateFilter(item.filter);
+            normalized.add(item);
         }
         return List.copyOf(normalized);
     }
@@ -188,14 +209,6 @@ final class Model {
         return expr.isEmpty() || evalNode(expr, 0, args);
     }
 
-    private static Experiment normalizeExperiment(Experiment exp) {
-        Experiment normalized = exp == null ? new Experiment() : exp;
-        normalized.filter = normalized.filter == null ? List.of() : List.copyOf(normalized.filter);
-        normalized.layers = normalized.layers == null ? List.of() : normalizeLayers(normalized.layers);
-        validateFilter(normalized.filter);
-        return normalized;
-    }
-
     private static List<Layer> normalizeLayers(List<Layer> layers) {
         ArrayList<Layer> normalized = new ArrayList<>(layers.size());
         for (Layer layer : layers) {
@@ -236,13 +249,6 @@ final class Model {
         boolean[] used = new boolean[nodes.size()];
         for (int i = 0; i < nodes.size(); i++) {
             ExprNode node = nodes.get(i);
-            node.opType = OpType.fromCode(node.op);
-            node.dataType = DataType.fromCode(node.dtype);
-            node.key = node.key == null ? "" : node.key;
-            node.paramS = node.paramS == null ? "" : node.paramS;
-            node.child = node.child == null ? List.of() : List.copyOf(node.child);
-            node.rawParamSS = node.rawParamSS == null ? List.of() : List.copyOf(node.rawParamSS);
-            node.paramSS = node.rawParamSS.isEmpty() ? Set.of() : Set.copyOf(new HashSet<>(node.rawParamSS));
             for (int child : node.child) {
                 if (child <= 0 || child >= nodes.size() || used[child]) {
                     throw new IllegalArgumentException("broken filter config");

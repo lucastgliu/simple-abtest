@@ -52,6 +52,10 @@ type ExprNode struct {
 	ss map[string]bool
 }
 
+func (node *ExprNode) normalize() {
+	node.ss = utils.ListToSet(node.ParamSS)
+}
+
 var (
 	errBrokenConfig = errors.New("broken config")
 	errArgumentMiss = errors.New("argument miss")
@@ -68,6 +72,9 @@ func ParseExpr(config []byte) ([]ExprNode, error) {
 	err := json.Unmarshal(config, &nodes)
 	if err != nil {
 		return nil, err
+	}
+	for i := range nodes {
+		nodes[i].normalize()
 	}
 
 	used := make([]bool, len(nodes))
@@ -94,7 +101,6 @@ func ParseExpr(config []byte) ([]ExprNode, error) {
 				node.DType != DtStr || len(node.ParamSS) == 0 {
 				return nil, errBrokenConfig
 			}
-			node.ss = utils.ListToSet(node.ParamSS)
 		case OpEqual, OpNotEqual, OpLessThan, OpLessOrEqual, OpGreatThan, OpGreatOrEqual:
 			if len(node.Child) != 0 || len(node.Key) == 0 ||
 				(node.DType != DtStr && node.DType != DtInt && node.DType != DtFloat) {

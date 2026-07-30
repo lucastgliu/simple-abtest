@@ -28,38 +28,40 @@ static bool Compare(OpType op, T lhs, T rhs) {
   }
 }
 
-static ExprNode ConvertExprNode(const proto::ExprNode& src) {
-  ExprNode node;
-  node.op = static_cast<OpType>(src.op());
-  node.dtype = static_cast<DataType>(src.dtype());
-  node.key = src.key();
-  node.param_s = src.s();
-  node.param_i = src.i();
-  node.param_f = src.f();
-  node.child.reserve(static_cast<std::size_t>(src.child_size()));
+void ExprNode::Normalize(const proto::ExprNode& src) {
+  *this = ExprNode{};
+  op = static_cast<OpType>(src.op());
+  dtype = static_cast<DataType>(src.dtype());
+  key = src.key();
+  param_s = src.s();
+  param_i = src.i();
+  param_f = src.f();
+  child.reserve(static_cast<std::size_t>(src.child_size()));
   for (std::uint32_t item : src.child()) {
-    node.child.push_back(static_cast<std::size_t>(item));
+    child.push_back(static_cast<std::size_t>(item));
   }
   for (const auto& item : src.ss()) {
-    node.param_ss.emplace(item);
+    param_ss.emplace(item);
   }
-  return node;
 }
 
-static bool ConvertExpr(const google::protobuf::RepeatedPtrField<proto::ExprNode>& src,
-                        RuleExpr::Nodes* out,
-                        std::string* error) {
+void RuleExpr::Normalize(const google::protobuf::RepeatedPtrField<proto::ExprNode>& src) {
   RuleExpr::Nodes nodes;
   nodes.reserve(static_cast<std::size_t>(src.size()));
   for (const auto& item : src) {
-    nodes.push_back(ConvertExprNode(item));
+    ExprNode node;
+    node.Normalize(item);
+    nodes.push_back(std::move(node));
   }
+  nodes_ = std::move(nodes);
+}
 
-  std::vector<bool> used(nodes.size(), false);
-  for (std::size_t i = 0; i < nodes.size(); ++i) {
-    const auto& node = nodes[i];
+bool RuleExpr::Validate(std::string* error) const {
+  std::vector<bool> used(nodes_.size(), false);
+  for (std::size_t i = 0; i < nodes_.size(); ++i) {
+    const auto& node = nodes_[i];
     for (std::size_t child : node.child) {
-      if (child == 0 || child >= nodes.size() || used[child]) {
+      if (child == 0 || child >= nodes_.size() || used[child]) {
         if (error != nullptr) {
           *error = "broken filter config";
         }
@@ -118,7 +120,6 @@ static bool ConvertExpr(const google::protobuf::RepeatedPtrField<proto::ExprNode
         return false;
     }
   }
-  *out = std::move(nodes);
   return true;
 }
 
@@ -182,17 +183,6 @@ static bool EvalNode(const RuleExpr::Nodes& expr, std::size_t index, const std::
 }
 
 RuleExpr::RuleExpr(Nodes nodes) : nodes_(std::move(nodes)) {}
-
-bool RuleExpr::FromProto(const google::protobuf::RepeatedPtrField<proto::ExprNode>& src,
-                         RuleExpr* out,
-                         std::string* error) {
-  Nodes nodes;
-  if (!ConvertExpr(src, &nodes, error)) {
-    return false;
-  }
-  *out = RuleExpr(std::move(nodes));
-  return true;
-}
 
 bool RuleExpr::Eval(const std::unordered_map<std::string, std::string>& args) const {
   return nodes_.empty() || EvalNode(nodes_, 0, args);

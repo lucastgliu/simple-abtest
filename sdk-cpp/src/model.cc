@@ -7,7 +7,7 @@
 
 namespace simple_abtest {
 
-static Group ConvertGroup(const proto::Group& src) {
+static Group NormalizeGroup(const proto::Group& src) {
   Group group;
   group.name = src.name();
   group.bitmap.assign(src.bm().begin(), src.bm().end());
@@ -15,24 +15,24 @@ static Group ConvertGroup(const proto::Group& src) {
   return group;
 }
 
-static Segment ConvertSegment(const proto::Segment& src) {
+static Segment NormalizeSegment(const proto::Segment& src) {
   Segment segment;
   segment.range.begin = src.r().a();
   segment.range.end = src.r().b();
   segment.seed = src.seed();
   segment.groups.reserve(static_cast<std::size_t>(src.grp_size()));
   for (const auto& item : src.grp()) {
-    segment.groups.push_back(ConvertGroup(item));
+    segment.groups.push_back(NormalizeGroup(item));
   }
   return segment;
 }
 
-static Layer ConvertLayer(const proto::Layer& src) {
+static Layer NormalizeLayer(const proto::Layer& src) {
   Layer layer;
   layer.name = src.name();
   layer.segments.reserve(static_cast<std::size_t>(src.seg_size()));
   for (const auto& item : src.seg()) {
-    layer.segments.push_back(ConvertSegment(item));
+    layer.segments.push_back(NormalizeSegment(item));
   }
   for (const auto& item : src.force_hit()) {
     layer.force_hit.emplace(item.first, HitIndex{item.second.s(), item.second.g()});
@@ -40,18 +40,19 @@ static Layer ConvertLayer(const proto::Layer& src) {
   return layer;
 }
 
-static bool ConvertExperiment(const proto::Experiment& src, Experiment* out, std::string* error) {
-  Experiment exp;
-  if (!RuleExpr::FromProto(src.filter(), &exp.filter, error)) {
-    return false;
-  }
-  exp.seed = src.seed();
-  exp.layers.reserve(static_cast<std::size_t>(src.lyr_size()));
+void Experiment::Normalize(const proto::Experiment& src) {
+  Experiment normalized;
+  normalized.filter.Normalize(src.filter());
+  normalized.seed = src.seed();
+  normalized.layers.reserve(static_cast<std::size_t>(src.lyr_size()));
   for (const auto& item : src.lyr()) {
-    exp.layers.push_back(ConvertLayer(item));
+    normalized.layers.push_back(NormalizeLayer(item));
   }
-  *out = std::move(exp);
-  return true;
+  *this = std::move(normalized);
+}
+
+bool Experiment::Validate(std::string* error) const {
+  return filter.Validate(error);
 }
 
 const Group* Segment::Locate(const std::string& key) const {
@@ -85,7 +86,8 @@ bool ParseExperimentsJson(const std::string& payload,
   parsed.reserve(static_cast<std::size_t>(exps_msg.items_size()));
   for (const auto& item : exps_msg.items()) {
     Experiment exp;
-    if (!ConvertExperiment(item, &exp, error)) {
+    exp.Normalize(item);
+    if (!exp.Validate(error)) {
       return false;
     }
     parsed.push_back(std::move(exp));

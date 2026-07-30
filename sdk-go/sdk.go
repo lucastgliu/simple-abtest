@@ -73,6 +73,9 @@ func (c *Client) update() error {
 	}, nil, &exps); err != nil {
 		return err
 	}
+	for i := range exps {
+		exps[i].Normalize()
+	}
 
 	c.data.Store(&snapshot{
 		exps:  exps,
