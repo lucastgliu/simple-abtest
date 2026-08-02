@@ -123,6 +123,25 @@ TEST(RuleTest, SetOperatorFiltersAreNormalizedFromSnapshot) {
   EXPECT_TRUE(EvalExpr(exps[1].filter, {{"bucket", "C"}}));
 }
 
+TEST(RuleTest, KeyMissOnlyChecksMapMembership) {
+  std::vector<Experiment> exps;
+  std::string error;
+  const std::string payload = R"json([
+    {"filter": [{"op": 12, "key": "country"}]},
+    {"filter": [
+      {"op": 3, "child": [1]},
+      {"op": 12, "key": "country"}
+    ]}
+  ])json";
+  ASSERT_TRUE(ParseExperimentsJson(payload, &exps, &error)) << error;
+
+  EXPECT_TRUE(EvalExpr(exps[0].filter, {}));
+  EXPECT_FALSE(EvalExpr(exps[0].filter, {{"country", ""}}));
+  EXPECT_FALSE(EvalExpr(exps[0].filter, {{"country", "CN"}}));
+  EXPECT_FALSE(EvalExpr(exps[1].filter, {}));
+  EXPECT_TRUE(EvalExpr(exps[1].filter, {{"country", ""}}));
+}
+
 TEST(DispatchTest, RichSegmentAndForceHit) {
   std::string key = FindKey(1, 50, 100);
   ASSERT_FALSE(key.empty());

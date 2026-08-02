@@ -27,6 +27,7 @@ const (
 	OpLessOrEqual
 	OpGreatThan
 	OpGreatOrEqual
+	OpKeyMiss
 )
 
 const (
@@ -99,6 +100,10 @@ func ParseExpr(config []byte) ([]ExprNode, error) {
 		case OpIn, OpNotIn:
 			if len(node.Child) != 0 || len(node.Key) == 0 ||
 				node.DType != DtStr || len(node.ParamSS) == 0 {
+				return nil, errBrokenConfig
+			}
+		case OpKeyMiss:
+			if len(node.Child) != 0 || len(node.Key) == 0 || node.DType != DtNull {
 				return nil, errBrokenConfig
 			}
 		case OpEqual, OpNotEqual, OpLessThan, OpLessOrEqual, OpGreatThan, OpGreatOrEqual:
@@ -214,6 +219,9 @@ func EvalExpr(expr []ExprNode, args map[string]string) bool {
 				return false, errArgumentMiss
 			}
 			return !node.ss[val], nil
+		case OpKeyMiss:
+			_, exists := args[node.Key]
+			return !exists, nil
 
 		case OpEqual:
 			return cmpOp(node, cmpEqual[string], cmpEqual[int64], cmpEqual[float64])

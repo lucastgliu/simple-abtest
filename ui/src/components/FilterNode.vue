@@ -7,23 +7,25 @@
 
       <template v-if="!isLogicOp(node.op)">
         <el-input v-model="node.key" :placeholder="t('common.key')" style="width: 140px" @update:model-value="emitChange" />
-        <el-select
-          v-model="node.dtype"
-          :placeholder="t('filter.paramType')"
-          style="width: 120px"
-          :disabled="isInOp(node.op)"
-          @change="emitChange"
-        >
-          <el-option v-for="opt in dtypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-        </el-select>
+        <template v-if="!isKeyPredicate(node.op)">
+          <el-select
+            v-model="node.dtype"
+            :placeholder="t('filter.paramType')"
+            style="width: 120px"
+            :disabled="isInOp(node.op)"
+            @change="emitChange"
+          >
+            <el-option v-for="opt in dtypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          </el-select>
 
-        <template v-if="isInOp(node.op)">
-           <el-input v-model="ssInput" :placeholder="t('filter.param')" style="width: 180px" @change="updateSS" />
-        </template>
-        <template v-else>
-           <el-input v-if="node.dtype === DataTypes.DtStr" v-model="node.s" :placeholder="t('filter.param')" style="width: 180px" @update:model-value="emitChange" />
-           <el-input-number v-else-if="node.dtype === DataTypes.DtInt" v-model="node.i" :placeholder="t('filter.param')" style="width: 180px" :controls="false" @update:model-value="emitChange" />
-           <el-input-number v-else-if="node.dtype === DataTypes.DtFloat" v-model="node.f" :placeholder="t('filter.param')" style="width: 180px" :controls="false" @update:model-value="emitChange" />
+          <template v-if="isInOp(node.op)">
+             <el-input v-model="ssInput" :placeholder="t('filter.param')" style="width: 180px" @change="updateSS" />
+          </template>
+          <template v-else>
+             <el-input v-if="node.dtype === DataTypes.DtStr" v-model="node.s" :placeholder="t('filter.param')" style="width: 180px" @update:model-value="emitChange" />
+             <el-input-number v-else-if="node.dtype === DataTypes.DtInt" v-model="node.i" :placeholder="t('filter.param')" style="width: 180px" :controls="false" @update:model-value="emitChange" />
+             <el-input-number v-else-if="node.dtype === DataTypes.DtFloat" v-model="node.f" :placeholder="t('filter.param')" style="width: 180px" :controls="false" @update:model-value="emitChange" />
+          </template>
         </template>
       </template>
 
@@ -75,6 +77,7 @@ const updateSS = (val: string) => {
 const isLogicOp = (op: number) => [OpTypes.OpAnd, OpTypes.OpOr, OpTypes.OpNot].includes(op)
 const canHaveChildren = (op: number) => isLogicOp(op)
 const isInOp = (op: number) => [OpTypes.OpIn, OpTypes.OpNotIn].includes(op)
+const isKeyPredicate = (op: number) => op === OpTypes.OpKeyMiss
 const OpOptions = computed(() => getOpOptions(t))
 const dtypeOptions = computed(() => {
   const allTypes = getDTypeOptions(t)
@@ -88,7 +91,9 @@ watch(
   () => props.node.op,
   (val) => {
     if (!isLogicOp(val)) {
-      if (isInOp(val)) {
+      if (isKeyPredicate(val)) {
+        props.node.dtype = DataTypes.DtNull
+      } else if (isInOp(val)) {
         props.node.dtype = DataTypes.DtStr
       } else if (!props.node.dtype) {
         props.node.dtype = DataTypes.DtStr
@@ -108,7 +113,13 @@ const handleOpChange = (val: number) => {
     props.node.ss = undefined
   } else {
     props.node.children = []
-    if (isInOp(val)) {
+    if (isKeyPredicate(val)) {
+      props.node.dtype = DataTypes.DtNull
+      props.node.s = undefined
+      props.node.i = undefined
+      props.node.f = undefined
+      props.node.ss = undefined
+    } else if (isInOp(val)) {
       props.node.dtype = DataTypes.DtStr
       props.node.s = undefined
       props.node.i = undefined

@@ -170,6 +170,47 @@ func TestEvalExprMissingArg(t *testing.T) {
 	}
 }
 
+func TestEvalExprKeyMiss(t *testing.T) {
+	cfg := []byte(`[{"op":12,"key":"country"}]`)
+	nodes, err := ParseExpr(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !EvalExpr(nodes, map[string]string{}) {
+		t.Fatal("absent key should match")
+	}
+	if EvalExpr(nodes, map[string]string{"country": ""}) {
+		t.Fatal("present key with empty value should not match")
+	}
+	if EvalExpr(nodes, map[string]string{"country": "CN"}) {
+		t.Fatal("present key with non-empty value should not match")
+	}
+}
+
+func TestEvalExprKeyPresentViaNot(t *testing.T) {
+	cfg := []byte(`[
+{"op":3,"child":[1]},
+{"op":12,"key":"country"}
+]`)
+	nodes, err := ParseExpr(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if EvalExpr(nodes, map[string]string{}) {
+		t.Fatal("NOT key-miss should not match an absent key")
+	}
+	if !EvalExpr(nodes, map[string]string{"country": ""}) {
+		t.Fatal("NOT key-miss should match a present key regardless of value")
+	}
+}
+
+func TestParseExprKeyMissRejectsDataType(t *testing.T) {
+	cfg := []byte(`[{"op":12,"dtype":1,"key":"country"}]`)
+	if _, err := ParseExpr(cfg); err == nil {
+		t.Fatal("key-miss must not accept a data type")
+	}
+}
+
 func TestEvalExprLogicAndOrNot(t *testing.T) {
 	cfg := []byte(`[
 {"op":1,"child":[1,2]},

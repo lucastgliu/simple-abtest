@@ -27,6 +27,7 @@ enum class OpType : std::uint32_t {
   kLessOrEqual = 9,
   kGreatThan = 10,
   kGreatOrEqual = 11,
+  kKeyMiss = 12,
 };
 
 enum class DataType : std::uint32_t {

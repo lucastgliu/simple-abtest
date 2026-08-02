@@ -98,6 +98,14 @@ bool RuleExpr::Validate(std::string* error) const {
           return false;
         }
         break;
+      case OpType::kKeyMiss:
+        if (!node.child.empty() || node.key.empty() || node.dtype != DataType::kNull) {
+          if (error != nullptr) {
+            *error = "broken filter config";
+          }
+          return false;
+        }
+        break;
       case OpType::kEqual:
       case OpType::kNotEqual:
       case OpType::kLessThan:
@@ -150,6 +158,8 @@ static bool EvalNode(const RuleExpr::Nodes& expr, std::size_t index, const std::
       auto it = args.find(node.key);
       return it != args.end() && node.param_ss.count(it->second) == 0;
     }
+    case OpType::kKeyMiss:
+      return args.find(node.key) == args.end();
     case OpType::kEqual:
     case OpType::kNotEqual:
     case OpType::kLessThan:

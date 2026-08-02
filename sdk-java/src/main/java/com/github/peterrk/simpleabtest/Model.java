@@ -82,7 +82,8 @@ final class Model {
         LESS_THAN,
         LESS_OR_EQUAL,
         GREAT_THAN,
-        GREAT_OR_EQUAL;
+        GREAT_OR_EQUAL,
+        KEY_MISS;
 
         static OpType fromCode(int code) {
             if (code < 0 || code >= values().length) {
@@ -271,6 +272,11 @@ final class Model {
                         throw new IllegalArgumentException("broken filter config");
                     }
                 }
+                case KEY_MISS -> {
+                    if (!node.child.isEmpty() || node.key.isEmpty() || node.dataType != DataType.NULL) {
+                        throw new IllegalArgumentException("broken filter config");
+                    }
+                }
                 case EQUAL, NOT_EQUAL, LESS_THAN, LESS_OR_EQUAL, GREAT_THAN, GREAT_OR_EQUAL -> {
                     if (!node.child.isEmpty() || node.key.isEmpty()) {
                         throw new IllegalArgumentException("broken filter config");
@@ -309,6 +315,7 @@ final class Model {
             case NOT -> !evalNode(expr, node.child.getFirst(), args);
             case IN -> node.paramSS.contains(args.get(node.key));
             case NOT_IN -> args.containsKey(node.key) && !node.paramSS.contains(args.get(node.key));
+            case KEY_MISS -> !args.containsKey(node.key);
             case EQUAL, NOT_EQUAL, LESS_THAN, LESS_OR_EQUAL, GREAT_THAN, GREAT_OR_EQUAL -> compare(node, args);
             case NULL -> false;
         };

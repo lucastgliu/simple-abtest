@@ -114,7 +114,8 @@ export const OpTypes = {
   OpLessThan: 8,
   OpLessOrEqual: 9,
   OpGreatThan: 10,
-  OpGreatOrEqual: 11
+  OpGreatOrEqual: 11,
+  OpKeyMiss: 12
 }
 
 export const DataTypes = {
@@ -137,7 +138,8 @@ export const getOpOptions = (t: Translator) => [
   { label: '<', value: 8 },
   { label: '<=', value: 9 },
   { label: '>', value: 10 },
-  { label: '>=', value: 11 }
+  { label: '>=', value: 11 },
+  { label: t('filter.opKeyMiss'), value: 12 }
 ]
 
 export const getDTypeOptions = (t: Translator) => [
@@ -178,6 +180,11 @@ export const validateExprNodes = (nodes: ExprNode[]): { valid: boolean; messageK
       case OpTypes.OpNotIn:
         if (children.length !== 0 || !node.key || dtype !== DataTypes.DtStr || !node.ss || node.ss.length === 0) {
           return { valid: false, messageKey: 'message.invalidInArgs' }
+        }
+        break
+      case OpTypes.OpKeyMiss:
+        if (children.length !== 0 || !node.key || dtype !== DataTypes.DtNull) {
+          return { valid: false, messageKey: 'message.invalidKeyArgs' }
         }
         break
       case OpTypes.OpEqual:

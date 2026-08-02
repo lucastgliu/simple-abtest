@@ -95,6 +95,26 @@ class SdkJavaTest {
     }
 
     @Test
+    void keyMissOnlyChecksMapMembership() {
+        String payload = """
+                [
+                  {"filter": [{"op": 12, "key": "country"}]},
+                  {"filter": [
+                    {"op": 3, "child": [1]},
+                    {"op": 12, "key": "country"}
+                  ]}
+                ]
+                """;
+        List<Model.Experiment> exps = Client.parseExperiments(payload);
+
+        assertTrue(Model.evalExpr(exps.get(0).filter, Map.of()));
+        assertFalse(Model.evalExpr(exps.get(0).filter, Map.of("country", "")));
+        assertFalse(Model.evalExpr(exps.get(0).filter, Map.of("country", "CN")));
+        assertFalse(Model.evalExpr(exps.get(1).filter, Map.of()));
+        assertTrue(Model.evalExpr(exps.get(1).filter, Map.of("country", "")));
+    }
+
+    @Test
     void richSegmentDispatchWorks() {
         String key = findKey(1, 50, 100);
         String payload = """
