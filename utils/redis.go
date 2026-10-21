@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"crypto/sha1"
+	"crypto/tls"
 	"encoding/hex"
 	"strings"
 
@@ -36,19 +37,24 @@ func IncrWithTTL(ctx context.Context, db *redis.Client, key string, ttlSeconds i
 }
 
 type RedisConfig struct {
-	Address  string `json:"address" yaml:"address"`
-	Password string `json:"password" yaml:"password"`
-	PoolSize int    `json:"pool_size" yaml:"pool_size"`
-	IdleSize int    `json:"idle_size" yaml:"idle_size"`
+	Address   string `json:"address" yaml:"address"`
+	Password  string `json:"password" yaml:"password"`
+	PoolSize  int    `json:"pool_size" yaml:"pool_size"`
+	IdleSize  int    `json:"idle_size" yaml:"idle_size"`
+	EnableTLS bool   `json:"enable_tls" yaml:"enable_tls"`
 }
 
 func newRedisClient(cfg *RedisConfig, ping bool) (*redis.Client, error) {
-	c := redis.NewClient(&redis.Options{
+	opts := &redis.Options{
 		Addr:         cfg.Address,
 		Password:     cfg.Password,
 		PoolSize:     cfg.PoolSize,
 		MinIdleConns: cfg.IdleSize,
-	})
+	}
+	if cfg.EnableTLS {
+		opts.TLSConfig = &tls.Config{}
+	}
+	c := redis.NewClient(opts)
 	if !ping {
 		return c, nil
 	}
